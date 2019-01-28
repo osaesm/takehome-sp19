@@ -53,6 +53,14 @@ def mirror(name):
 
 @app.route("/shows", methods=['GET'])
 def get_all_shows():
+    min_episodes = request.args.get('minEpisodes')
+    if min_episodes is not None:
+        min_episodes = int(min_episodes)
+        shows_with_min_watched = []
+        for show in db.get('shows'):
+            if show['episodes_seen'] >= min_episodes:
+                shows_with_min_watched.append(show)
+        return create_response({"shows": shows_with_min_watched})
     return create_response({"shows": db.get('shows')})
 
 @app.route("/shows/<id>", methods=['DELETE'])
@@ -64,7 +72,34 @@ def delete_show(id):
 
 
 # TODO: Implement the rest of the API here!
+@app.route("/shows/<id>", methods=['GET'])
+def get_show(id):
+    retrieved_show = db.getById('shows', int(id))
+    if retrieved_show is None:
+        return create_response(status=404, message="No show with this id exists")
+    return create_response(retrieved_show)
 
+@app.route("/shows", methods=['POST'])
+def add_show():
+    body = request.get_json()
+    if 'name' not in body or 'episodes_seen' not in body:
+        return create_response(status=422, message="New show needs a name and number of episodes watched")
+    new_show = db.create('shows', {"name": body['name'], "episodes_seen": int(body['episodes_seen'])})
+    return create_response(status=201, data=new_show)
+
+@app.route("/shows/<id>", methods=["PUT"])
+def update_show(id):
+    body = request.get_json()
+    if db.getById('shows', int(id)) is None:
+        return create_response(status=404, message="No show with this id exists")
+
+    if 'name' in body and 'episodes_seen' in body:
+        db.updateById('shows', int(id), {"name": body['name'], "episodes_seen": int(body['episodes_seen'])})
+    elif 'name' in body:
+        db.updateById('shows', int(id), {"name": body['name']})
+    elif 'episodes_seen' in body:
+        db.updateById('shows', int(id), {"episodes_seen": int(body['episodes_seen'])})
+    return create_response(status=201, data=db.getById('shows', int(id)))
 """
 ~~~~~~~~~~~~ END API ~~~~~~~~~~~~
 """
